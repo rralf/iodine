@@ -770,12 +770,12 @@ handle_null_request(int tun_fd, int dns_fd, struct dnsfd *dns_fds, struct query 
 {
 	struct in_addr tempip;
 	char in[512];
-	char logindata[16];
 	char out[64*1024];
 	char unpacked[64*1024];
 	char *tmp[2];
 	int userid;
 	int read;
+	login_hash hash;
 
 	userid = -1;
 
@@ -880,9 +880,9 @@ handle_null_request(int tun_fd, int dns_fd, struct dnsfd *dns_fds, struct query 
 			return;
 		} else {
 			users[userid].last_pkt = time(NULL);
-			login_calculate(logindata, password, users[userid].seed);
+			login_calculate(hash, password, users[userid].seed);
 
-			if (read >= 18 && (memcmp(logindata, unpacked+1, 16) == 0)) {
+			if (read >= 18 && (memcmp(hash, unpacked+1, sizeof(hash)) == 0)) {
 				/* Store login ok */
 				users[userid].authenticated = 1;
 
@@ -1916,7 +1916,7 @@ handle_full_packet(int tun_fd, struct dnsfd *dns_fds, int userid)
 static void
 handle_raw_login(char *packet, int len, struct query *q, int fd, int userid)
 {
-	char myhash[16];
+	login_hash hash;
 
 	if (len < 16) return;
 
@@ -1933,8 +1933,8 @@ handle_raw_login(char *packet, int len, struct query *q, int fd, int userid)
 	}
 
 	/* User sends hash of seed + 1 */
-	login_calculate(myhash, password, users[userid].seed + 1);
-	if (memcmp(packet, myhash, 16) == 0) {
+	login_calculate(hash, password, users[userid].seed + 1);
+	if (memcmp(packet, hash, sizeof(hash)) == 0) {
 		/* Update query and time info for user */
 		users[userid].last_pkt = time(NULL);
 		memcpy(&(users[userid].q), q, sizeof(struct query));
@@ -1945,8 +1945,8 @@ handle_raw_login(char *packet, int len, struct query *q, int fd, int userid)
 
 		/* Correct hash, reply with hash of seed - 1 */
 		user_set_conn_type(userid, CONN_RAW_UDP);
-		login_calculate(myhash, password, users[userid].seed - 1);
-		send_raw(fd, myhash, 16, userid, RAW_HDR_CMD_LOGIN, q);
+		login_calculate(hash, password, users[userid].seed - 1);
+		send_raw(fd, hash, sizeof(hash), userid, RAW_HDR_CMD_LOGIN, q);
 
 		users[userid].authenticated_raw = 1;
 	}

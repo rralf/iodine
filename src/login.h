@@ -18,6 +18,8 @@
 #ifndef __LOGIN_H__
 #define __LOGIN_H__
 
+typedef char login_hash[16];
+
 void login_calculate(char *, const char *, int);
 
 #endif

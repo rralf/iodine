@@ -1273,10 +1273,11 @@ send_ip_request(int fd, int userid)
 static void
 send_raw_udp_login(int dns_fd, int userid, int seed)
 {
-	char buf[16];
-	login_calculate(buf, password, seed + 1);
+	login_hash hash;
 
-	send_raw(dns_fd, buf, sizeof(buf), userid, RAW_HDR_CMD_LOGIN);
+	login_calculate(hash, password, seed + 1);
+
+	send_raw(dns_fd, hash, sizeof(hash), userid, RAW_HDR_CMD_LOGIN);
 }
 
 static void
@@ -1419,18 +1420,18 @@ static int
 handshake_login(int dns_fd, int seed)
 {
 	char in[4096];
-	char login[16];
 	char server[65];
 	char client[65];
 	int mtu;
 	int i;
 	int read;
+	login_hash hash;
 
-	login_calculate(login, password, seed);
+	login_calculate(hash, password, seed);
 
 	for (i=0; running && i<5 ;i++) {
 
-		send_login(dns_fd, login, 16);
+		send_login(dns_fd, hash, 16);
 
 		read = handshake_waitdns(dns_fd, in, sizeof(in), 'l', 'L', i+1);
 
@@ -1473,6 +1474,7 @@ handshake_raw_udp(int dns_fd, int seed)
 	int r;
 	int len;
 	int got_addr;
+	login_hash hash;
 
 	memset(&raw_serv, 0, sizeof(raw_serv));
 	got_addr = 0;
@@ -1537,7 +1539,6 @@ handshake_raw_udp(int dns_fd, int seed)
 			/* recv() needed for windows, dont change to read() */
 			len = recv(dns_fd, in, sizeof(in), 0);
 			if (len >= (16 + RAW_HDR_LEN)) {
-				char hash[16];
 				login_calculate(hash, password, seed - 1);
 				if (memcmp(in, raw_header, RAW_HDR_IDENT_LEN) == 0
 					&& RAW_HDR_GET_CMD(in) == RAW_HDR_CMD_LOGIN
