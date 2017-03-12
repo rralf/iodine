@@ -15,6 +15,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 
@@ -33,23 +35,38 @@
  */
 void login_calculate(char *buf, const char *pass, int seed)
 {
-	unsigned char temp[32];
+	unsigned char *temp;
+	size_t pass_len;
+	size_t chunks;
 	md5_state_t ctx;
 	int *ix;
 	int i;
 	int k;
 
-	memcpy(temp, pass, 32);
-	ix = (int*) temp;
+	pass_len = strlen(pass);
+	chunks = pass_len / sizeof(int);
+	if (pass_len % sizeof(int) != 0)
+		chunks += 1;
 
-	for (i = 0; i < 8; i++) {
+	temp = calloc(chunks, sizeof(int));
+	if (temp == NULL) {
+		fprintf(stderr, "insufficient memory");
+		exit(1);
+	}
+
+	memcpy(temp, pass, pass_len);
+
+	ix = (int*) temp;
+	for (i = 0; i < chunks; i++) {
 		k = ntohl(*ix);
 		k ^= seed;
 		*ix++ = htonl(k);
 	}
 
 	md5_init(&ctx);
-	md5_append(&ctx, temp, 32);
-	md5_finish(&ctx, (unsigned char *) buf);
+	md5_append(&ctx, temp, chunks * sizeof(int));
+	md5_finish(&ctx, (unsigned char *)buf);
+
+	free(temp);
 }
 
