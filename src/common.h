@@ -121,7 +121,7 @@ void do_setcon(char *);
 void do_detach(void);
 void do_pidfile(char *);
 
-void read_password(char*, size_t);
+char *read_password(void);
 
 int check_topdomain(char *, char **);
 

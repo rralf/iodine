@@ -89,7 +89,7 @@ static void help(FILE *stream, bool verbose)
 			"  -m max size of downstream fragments (default: autodetect)\n"
 			"  -M max size of upstream hostnames (~100-255, default: 255)\n"
 			"  -r to skip raw UDP mode attempt\n"
-			"  -P password used for authentication (max 32 chars will be used)\n\n"
+			"  -P password used for authentication\n\n"
 			"Other options:\n"
 			"  -v to print version info and exit\n"
 			"  -h to print this help and exit\n"
@@ -128,7 +128,7 @@ int main(int argc, char **argv)
 	struct passwd *pw;
 #endif
 	char *username;
-	char password[33];
+	char *password = NULL;
 	int foreground;
 	char *newroot;
 	char *context;
@@ -158,7 +158,6 @@ int main(int argc, char **argv)
 	pw = NULL;
 #endif
 	username = NULL;
-	memset(password, 0, 33);
 	srand(time(NULL));
 	foreground = 0;
 	newroot = NULL;
@@ -227,9 +226,14 @@ int main(int argc, char **argv)
 			break;
 #endif
 		case 'P':
-			strncpy(password, optarg, sizeof(password));
-			password[sizeof(password)-1] = 0;
+			if (!strlen(optarg))
+				break;
 
+			password = strdup(optarg);
+			if (password == NULL) {
+				fprintf(stderr, "insufficient memory\n");
+				exit(1);
+			}
 			/* XXX: find better way of cleaning up ps(1) */
 			memset(optarg, 0, strlen(optarg));
 			break;
@@ -336,11 +340,11 @@ int main(int argc, char **argv)
 #endif
 	}
 
-	if (strlen(password) == 0) {
+	if (!password) {
 		if (NULL != getenv(PASSWORD_ENV_VAR))
-			snprintf(password, sizeof(password), "%s", getenv(PASSWORD_ENV_VAR));
+			password = strdup(getenv(PASSWORD_ENV_VAR));
 		else
-			read_password(password, sizeof(password));
+			password = read_password();
 	}
 
 	client_set_password(password);
@@ -405,6 +409,7 @@ cleanup2:
 	close_dns(dns_fd);
 	close_tun(tun_fd);
 cleanup1:
+	free(password);
 
 	return retval;
 }

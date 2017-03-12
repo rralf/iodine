@@ -53,6 +53,8 @@
 
 #include "common.h"
 
+#define GETLINE_CHUNKSIZE 4
+
 /* The raw header used when not using DNS protocol */
 const unsigned char raw_header[RAW_HDR_LEN] = { 0x10, 0xd1, 0x9e, 0x00 };
 
@@ -288,10 +290,40 @@ do_detach()
 #endif
 }
 
-void
-read_password(char *buf, size_t len)
+/* reads a single line and dynamically (re-)allocates memory for it */
+static char *__getline(FILE *stream) {
+	char *ret, *tmp;
+	size_t size = 0;
+	int c;
+
+	ret = malloc(GETLINE_CHUNKSIZE + 1);
+	if (!ret)
+		return NULL;
+
+	while (1) {
+		c = fgetc(stream);
+		if (c == EOF || c == '\r' || c == '\n')
+			break;
+
+		if (size && size % GETLINE_CHUNKSIZE == 0) {
+			tmp = realloc(ret, size + GETLINE_CHUNKSIZE + 1);
+			if (!tmp) {
+				free(ret);
+				return NULL;
+			}
+			ret = tmp;
+		}
+		ret[size++] = c;
+	}
+
+	ret[size] = 0;
+
+	return ret;
+}
+
+char *read_password(void)
 {
-	char pwd[80] = {0};
+	char *password = NULL;
 #ifndef WINDOWS32
 	struct termios old;
 	struct termios tp;
@@ -307,28 +339,20 @@ read_password(char *buf, size_t len)
 
 	fprintf(stderr, "Enter password: ");
 	fflush(stderr);
-#ifndef WINDOWS32
-	fscanf(stdin, "%79[^\n]", pwd);
-#else
-	for (i = 0; i < sizeof(pwd); i++) {
-		pwd[i] = getch();
-		if (pwd[i] == '\r' || pwd[i] == '\n') {
-			pwd[i] = 0;
-			break;
-		} else if (pwd[i] == '\b') {
-			i--; 			/* Remove the \b char */
-			if (i >=0) i--; 	/* If not first char, remove one more */
-		}
+	password = __getline(stdin);
+
+	if (password == NULL) {
+		fprintf(stderr, "error getting password\n");
+		exit(1);
 	}
-#endif
+
 	fprintf(stderr, "\n");
 
 #ifndef WINDOWS32
 	tcsetattr(0, TCSANOW, &old);
 #endif
 
-	strncpy(buf, pwd, len);
-	buf[len-1] = '\0';
+	return password;
 }
 
 int

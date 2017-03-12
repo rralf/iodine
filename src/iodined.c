@@ -82,7 +82,7 @@ WSADATA wsa_data;
 
 static int running = 1;
 static char *topdomain;
-static char password[33];
+static char *password;
 static int created_users;
 
 static int check_ip;
@@ -2310,7 +2310,7 @@ static void help(FILE *stream)
 			"  -p port to listen on for incoming dns traffic (default 53)\n"
 			"  -n ip to respond with to NS queries\n"
 			"  -b port to forward normal DNS queries to (on localhost)\n"
-			"  -P password used for authentication (max 32 chars will be used)\n"
+			"  -P password used for authentication\n"
 			"  -F pidfile to write pid to a file\n"
 			"  -i maximum idle time before shutting down\n\n"
 			"tunnel_ip is the IP number of the local tunnel interface.\n"
@@ -2492,9 +2492,14 @@ main(int argc, char **argv)
 			max_idle_time = atoi(optarg);
 			break;
 		case 'P':
-			strncpy(password, optarg, sizeof(password));
-			password[sizeof(password)-1] = 0;
+			if (!strlen(optarg))
+				break;
 
+			password = strdup(optarg);
+			if (password == NULL) {
+				fprintf(stderr, "insufficient memory\n");
+				exit(1);
+			}
 			/* XXX: find better way of cleaning up ps(1) */
 			memset(optarg, 0, strlen(optarg));
 			break;
@@ -2618,11 +2623,11 @@ main(int argc, char **argv)
 		usage();
 	}
 
-	if (strlen(password) == 0) {
+	if (!password) {
 		if (NULL != getenv(PASSWORD_ENV_VAR))
-			snprintf(password, sizeof(password), "%s", getenv(PASSWORD_ENV_VAR));
+			password = strdup(getenv(PASSWORD_ENV_VAR));
 		else
-			read_password(password, sizeof(password));
+			password = read_password();
 	}
 
 	/* Mark both file descriptors as unused */
@@ -2748,6 +2753,8 @@ main(int argc, char **argv)
 	syslog(LOG_INFO, "stopping");
 	close_dns(bind_fd);
 cleanup:
+	free(password);
+
 	if (dns_fds.v6fd >= 0)
 		close_dns(dns_fds.v6fd);
 	if (dns_fds.v4fd >= 0)
