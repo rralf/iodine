@@ -1274,7 +1274,7 @@ static void
 send_raw_udp_login(int dns_fd, int userid, int seed)
 {
 	char buf[16];
-	login_calculate(buf, 16, password, seed + 1);
+	login_calculate(buf, password, seed + 1);
 
 	send_raw(dns_fd, buf, sizeof(buf), userid, RAW_HDR_CMD_LOGIN);
 }
@@ -1426,7 +1426,7 @@ handshake_login(int dns_fd, int seed)
 	int i;
 	int read;
 
-	login_calculate(login, 16, password, seed);
+	login_calculate(login, password, seed);
 
 	for (i=0; running && i<5 ;i++) {
 
@@ -1538,7 +1538,7 @@ handshake_raw_udp(int dns_fd, int seed)
 			len = recv(dns_fd, in, sizeof(in), 0);
 			if (len >= (16 + RAW_HDR_LEN)) {
 				char hash[16];
-				login_calculate(hash, 16, password, seed - 1);
+				login_calculate(hash, password, seed - 1);
 				if (memcmp(in, raw_header, RAW_HDR_IDENT_LEN) == 0
 					&& RAW_HDR_GET_CMD(in) == RAW_HDR_CMD_LOGIN
 					&& memcmp(&in[RAW_HDR_LEN], hash, sizeof(hash)) == 0) {

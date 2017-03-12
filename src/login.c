@@ -31,17 +31,13 @@
 /*
  * Needs a 16byte array for output, and 32 bytes password
  */
-void
-login_calculate(char *buf, int buflen, const char *pass, int seed)
+void login_calculate(char *buf, const char *pass, int seed)
 {
 	unsigned char temp[32];
 	md5_state_t ctx;
 	int *ix;
 	int i;
 	int k;
-
-	if (buflen < 16)
-		return;
 
 	memcpy(temp, pass, 32);
 	ix = (int*) temp;
@@ -55,6 +51,5 @@ login_calculate(char *buf, int buflen, const char *pass, int seed)
 	md5_init(&ctx);
 	md5_append(&ctx, temp, 32);
 	md5_finish(&ctx, (unsigned char *) buf);
-
 }
 

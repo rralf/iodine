@@ -880,7 +880,7 @@ handle_null_request(int tun_fd, int dns_fd, struct dnsfd *dns_fds, struct query 
 			return;
 		} else {
 			users[userid].last_pkt = time(NULL);
-			login_calculate(logindata, 16, password, users[userid].seed);
+			login_calculate(logindata, password, users[userid].seed);
 
 			if (read >= 18 && (memcmp(logindata, unpacked+1, 16) == 0)) {
 				/* Store login ok */
@@ -1933,7 +1933,7 @@ handle_raw_login(char *packet, int len, struct query *q, int fd, int userid)
 	}
 
 	/* User sends hash of seed + 1 */
-	login_calculate(myhash, 16, password, users[userid].seed + 1);
+	login_calculate(myhash, password, users[userid].seed + 1);
 	if (memcmp(packet, myhash, 16) == 0) {
 		/* Update query and time info for user */
 		users[userid].last_pkt = time(NULL);
@@ -1945,7 +1945,7 @@ handle_raw_login(char *packet, int len, struct query *q, int fd, int userid)
 
 		/* Correct hash, reply with hash of seed - 1 */
 		user_set_conn_type(userid, CONN_RAW_UDP);
-		login_calculate(myhash, 16, password, users[userid].seed - 1);
+		login_calculate(myhash, password, users[userid].seed - 1);
 		send_raw(fd, myhash, 16, userid, RAW_HDR_CMD_LOGIN, q);
 
 		users[userid].authenticated_raw = 1;
